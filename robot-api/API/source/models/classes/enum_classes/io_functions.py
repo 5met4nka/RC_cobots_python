@@ -19,3 +19,11 @@ class OutputFunction(BaseIntEnum):
     run_signal_true: int = 4
     warning_signal_true: int = 5
     error_signal_true: int = 6
+
+
+class SafetyInputFunctions(BaseIntEnum):
+    di_type_input: int = 0
+    di_type_emcy_input_stop_0_nc: int = 1
+    di_type_emcy_input_stop_1_nc: int = 2
+    di_type_sfgrd_stop_nc: int = 3
+    di_type_sfgrd_release_no: int = 4

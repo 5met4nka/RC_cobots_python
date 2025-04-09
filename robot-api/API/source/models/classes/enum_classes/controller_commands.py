@@ -45,9 +45,11 @@ class Getters(IntEnum):
     # get kinematics
     ctrlr_coms_fkine: int = 2000
     ctrlr_coms_ikine: int = 2001
+    ctrlr_coms_ikine_optimal: int = 2002
     # io func
     ctrlr_coms_get_dig_input_func: int = 1132
     ctrlr_coms_get_dig_output_func: int = 1133
+    ctrlr_coms_cbox_get_sfty_input_func: int = 1601
 
 
 class Setters(IntEnum):

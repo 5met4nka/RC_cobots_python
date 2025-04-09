@@ -4,8 +4,8 @@ from dataclasses import dataclass
 @dataclass
 class Version:
     """
-    Версия API.
-    Создается из версии ПО ядра, протокола ядра и версии ПО API.
+    Версия API. Создается из версии ПО ядра, протокола ядра и версии ПО API.
+
     Attributes:
         proto_version: Версия протокола ядра.
         core_version: Версия ПО ядра робота.
@@ -13,7 +13,7 @@ class Version:
     """
 
     proto_version: str | int = 0x02000400
-    core_version: str = '1.2.603'
+    core_version: str = '1.2.604'
     api_version: int = 3
 
     def get_full_version(self):

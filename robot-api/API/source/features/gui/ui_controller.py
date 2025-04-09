@@ -1,11 +1,10 @@
 from __future__ import annotations
-from tkinter import Tk
+from tkinter import END, Tk
 from typing import TYPE_CHECKING
 
 from API.source.ap_interface.motion.coordinate_system import CoordinateSystem
 from API.source.features.gui.view import _WindowUI
-from API.source.features.gui.key_handler import KeyHandler
-from API.source.features.gui.bindings import Binding, Sequences
+from API.source.features.gui.bindings import Binding
 from API.source.features.mathematics.coordinate_system import (
     convert_position_orientation
 )
@@ -19,7 +18,7 @@ from API.source.models.classes.enum_classes.various_types import (
     AngleUnitTypes, GUICoordinateSystem, MotionTypes
 )
 from API.source.models.constants import (
-    JOYSTICK_ACCEL_MAX_DEG_SEC, JOYSTICK_ACCEL_MAX_RAD_SEC,
+    JOYSTICK_ACCEL_MAX_DEG_SEC, JOYSTICK_ACCEL_MAX_RAD_SEC, JOINTS_COUNT,
     JOYSTICK_SPEED_MAX_DEG_SEC, JOYSTICK_SPEED_MAX_RAD_SEC,
 )
 
@@ -27,7 +26,8 @@ if TYPE_CHECKING:
     from API.source.ap_interface.motion.linear_motion import LinearMotion
     from API.source.ap_interface.motion.joint_motion import JointMotion
     from API.source.ap_interface.motion.motion_host import Motion
-    from API.source.features.gui.bindings import RTDGroup
+    from API.source.ap_interface.motion.motion_mode import MotionMode
+    from API.source.ap_interface.motion.move_scaling import MoveScaling
 
 
 class SimpleJoystickUI(Tk):
@@ -39,15 +39,14 @@ class SimpleJoystickUI(Tk):
         act_linear_pose: LinearMotion.get_actual_position,
         act_joint_pose: JointMotion.get_actual_position,
         free_drive: Motion.free_drive,
-        mode_set_func: Motion.mode.set,
+        mode_set_func: MotionMode.set,
         add_new_waypoint: JointMotion.add_new_waypoint,
         add_new_offset: LinearMotion.add_new_offset,
-        scale_setup: Motion.scale_setup.set,
+        scale_setup: MoveScaling.set,
         coordinate_system: CoordinateSystem | None
     ):
         super().__init__()
         self.ui = _WindowUI(self, coordinate_system)
-        self.key_handler = KeyHandler(self)
         self.act_l_pose = act_linear_pose
         self.act_j_pose = act_joint_pose
         self.joint_set_jog_param_in_tcp = joint_set_jog_param_in_tcp
@@ -60,177 +59,49 @@ class SimpleJoystickUI(Tk):
         self.current_coordinate_system = (
             self.ui.coordinate_system_combobox.get()
         )
-
+        self.jog_buttons = {
+            self.ui.x_min_btn: (linear_jog_func,  'x_min', 'X', '-'),
+            self.ui.x_max_btn: (linear_jog_func, 'x_max', 'X', '+'),
+            self.ui.y_min_btn: (linear_jog_func, 'y_min', 'Y', '-'),
+            self.ui.y_max_btn: (linear_jog_func, 'y_max', 'Y', '+'),
+            self.ui.z_min_btn: (linear_jog_func, 'z_min', 'Z', '-'),
+            self.ui.z_max_btn: (linear_jog_func, 'z_max', 'Z', '+'),
+            self.ui.rx_min_btn: (linear_jog_func, 'rx_min', 'Rx', '-'),
+            self.ui.rx_max_btn: (linear_jog_func, 'rx_max', 'Rx', '+'),
+            self.ui.ry_min_btn: (linear_jog_func, 'ry_min', 'Ry', '-'),
+            self.ui.ry_max_btn: (linear_jog_func, 'ry_max', 'Ry', '+'),
+            self.ui.rz_min_btn: (linear_jog_func, 'rz_min', 'Rz', '-'),
+            self.ui.rz_max_btn: (linear_jog_func, 'rz_max', 'Rz', '+'),
+            self.ui.j0_min_btn: (joint_jog_func, 'j0_min', 0, '-'),
+            self.ui.j0_max_btn: (joint_jog_func, 'j0_max', 0, '+'),
+            self.ui.j1_min_btn: (joint_jog_func, 'j1_mix', 1, '-'),
+            self.ui.j1_max_btn: (joint_jog_func, 'j1_max', 1, '+'),
+            self.ui.j2_min_btn: (joint_jog_func, 'j2_mix', 2, '-'),
+            self.ui.j2_max_btn: (joint_jog_func, 'j2_max', 2, '+'),
+            self.ui.j3_min_btn: (joint_jog_func, 'j3_mix', 3, '-'),
+            self.ui.j3_max_btn: (joint_jog_func, 'j3_max', 3, '+'),
+            self.ui.j4_min_btn: (joint_jog_func, 'j4_mix', 4, '-'),
+            self.ui.j4_max_btn: (joint_jog_func, 'j4_max', 4, '+'),
+            self.ui.j5_min_btn: (joint_jog_func, 'j5_mix', 5, '-'),
+            self.ui.j5_max_btn: (joint_jog_func, 'j5_max', 5, '+'),
+        }
         self.binds = []
-        self.binds.append(Binding('empty', None, Sequences.empty))
-        self.binds.append(
-            Binding(
-                'x_min',
-                self.ui.x_min_btn.connect(linear_jog_func, 'X', '-'),
-                Sequences.x_min
+        self.binds.append(Binding('empty', None))
+        for (
+            button, (func, name, axis, direction)
+         ) in self.jog_buttons.items():
+            self.binds.append(
+                Binding(
+                    name,
+                    button.connect(func, axis, direction)
+                )
             )
-        )
-        self.binds.append(
-            Binding(
-                'x_max',
-                self.ui.x_max_btn.connect(linear_jog_func, 'X', '+'),
-                Sequences.x_max
+            self.binds.append(
+                Binding(
+                    name,
+                    button.connect_release(self.stop)
+                )
             )
-        )
-        self.binds.append(
-            Binding(
-                'y_min',
-                self.ui.y_min_btn.connect(linear_jog_func, 'Y', '-'),
-                Sequences.y_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'y_max',
-                self.ui.y_max_btn.connect(linear_jog_func, 'Y', '+'),
-                Sequences.y_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'z_min',
-                self.ui.z_min_btn.connect(linear_jog_func, 'Z', '-'),
-                Sequences.z_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'z_max',
-                self.ui.z_max_btn.connect(linear_jog_func, 'Z', '+'),
-                Sequences.z_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'rx_min',
-                self.ui.rx_min_btn.connect(linear_jog_func, 'Rx', '-'),
-                Sequences.rx_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'rx_max',
-                self.ui.rx_max_btn.connect(linear_jog_func, 'Rx', '+'),
-                Sequences.rx_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'ry_min',
-                self.ui.ry_min_btn.connect(linear_jog_func, 'Ry', '-'),
-                Sequences.ry_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'ry_max',
-                self.ui.ry_max_btn.connect(linear_jog_func, 'Ry', '+'),
-                Sequences.ry_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'rz_min',
-                self.ui.rz_min_btn.connect(linear_jog_func, 'Rz', '-'),
-                Sequences.rz_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'rz_max',
-                self.ui.rz_max_btn.connect(linear_jog_func, 'Rz', '+'),
-                Sequences.rz_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j0_min',
-                self.ui.j0_min_btn.connect(joint_jog_func, 0, '-'),
-                Sequences.j0_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j0_max',
-                self.ui.j0_max_btn.connect(joint_jog_func, 0, '+'),
-                Sequences.j0_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j1_min',
-                self.ui.j1_min_btn.connect(joint_jog_func, 1, '-'),
-                Sequences.j1_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j1_max',
-                self.ui.j1_max_btn.connect(joint_jog_func, 1, '+'),
-                Sequences.j1_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j2_min',
-                self.ui.j2_min_btn.connect(joint_jog_func, 2, '-'),
-                Sequences.j2_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j2_max',
-                self.ui.j2_max_btn.connect(joint_jog_func, 2, '+'),
-                Sequences.j2_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j3_min',
-                self.ui.j3_min_btn.connect(joint_jog_func, 3, '-'),
-                Sequences.j3_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j3_max',
-                self.ui.j3_max_btn.connect(joint_jog_func, 3, '+'),
-                Sequences.j3_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j4_min',
-                self.ui.j4_min_btn.connect(joint_jog_func, 4, '-'),
-                Sequences.j4_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j4_max',
-                self.ui.j4_max_btn.connect(joint_jog_func, 4, '+'),
-                Sequences.j4_max
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j5_min',
-                self.ui.j5_min_btn.connect(joint_jog_func, 5, '-'),
-                Sequences.j5_min
-            )
-        )
-        self.binds.append(
-            Binding(
-                'j5_max',
-                self.ui.j5_max_btn.connect(joint_jog_func, 5, '+'),
-                Sequences.j5_max
-            )
-        )
         for group in self.ui.rtd_groups:
             sequence_str = (
                 'ctrl_j_c' if group.type_ == MotionTypes.JOINT else 'ctrl_l_c'
@@ -238,49 +109,44 @@ class SimpleJoystickUI(Tk):
             self.binds.append(
                 Binding(
                     sequence_str,
-                    group.copy_btn.connect(self.copy_rtd, group.type_),
-                    getattr(Sequences, sequence_str)
+                    group.copy_btn.connect(self.copy_rtd, group.type_)
                 )
             )
+            if group.paste_btn is not None:
+                group.paste_btn.connect(self.paste_copied_data)
         self.binds.append(
             Binding(
                 'move',
-                self.ui.move_btn.connect(self.move),
-                Sequences.move
+                self.ui.move_btn.connect(self.move)
             )
         )
         self.binds.append(
             Binding(
                 'move',
-                self.ui.move_btn.connect_release(self.stop),
-                Sequences.move
+                self.ui.move_btn.connect_release(self.stop)
             )
         )
         self.binds.append(
             Binding(
                 'offset',
-                self.ui.shift_btn.connect(self.shift),
-                Sequences.offset
+                self.ui.shift_btn.connect(self.shift)
             )
         )
         self.binds.append(
             Binding(
                 'offset',
-                self.ui.shift_btn.connect_release(self.stop),
-                Sequences.offset
+                self.ui.shift_btn.connect_release(self.stop)
             )
         )
         self.binds.append(
             Binding(
                 'free_drive',
-                self.ui.free_drive_btn.connect(free_drive),
-                Sequences.free_drive
+                self.ui.free_drive_btn.connect(free_drive)
             )
         )
         self.ui.free_drive_switch.bind(
             '<ButtonRelease>', self.set_free_drive
         )
-        self.bind('<Button>', self.click_handler)
         self.ui.coordinate_system_combobox.bind(
             '<<ComboboxSelected>>', self.set_current_coordinate_system
         )
@@ -300,12 +166,7 @@ class SimpleJoystickUI(Tk):
         )
         self.mainloop()
 
-    def click_handler(self, _):
-        if self.key_handler.sequence:
-            self.key_handler.clear_sequence()
-            self.release_all()
-
-    def copy_rtd(self, type_: RTDGroup.type_):
+    def copy_rtd(self, type_: str):
         self.clipboard_clear()
         self.clipboard_append(
             str(self.act_j_pose())
@@ -347,8 +208,7 @@ class SimpleJoystickUI(Tk):
             if motion_type == MotionTypes.JOINT
             else self.ui.offset_entry_group
         )
-        for group in entry_group:
-            return [float(entry.get()) for entry in group.entries]
+        return [float(entry.get()) for entry in entry_group.entries]
 
     def move(self):
         tcp_pose = self.get_entry_data(MotionTypes.JOINT)
@@ -370,6 +230,17 @@ class SimpleJoystickUI(Tk):
             units=self.units
         )
         self.mode_set('move')
+
+    def paste_copied_data(self):
+        clipboard = [
+            data.strip() for data
+            in self.clipboard_get().strip('[]').split(',')
+        ]
+        entry = self.ui.move_entry_group.entries
+        if len(clipboard) == JOINTS_COUNT:
+            for id, entry in enumerate(self.ui.move_entry_group.entries):
+                entry.delete(0, END)
+                entry.insert(0, clipboard[id])
 
     def shift(self):
         act_l_pose = self.act_l_pose(self.units)

@@ -47,12 +47,22 @@ class RobotApi:
     io: IO
     safety_status: SafetyStatus
 
-    def __init__(self, ip: str, timeout: int = 5, **kwargs) -> None:
+    def __init__(
+        self,
+        ip: str,
+        ignore_controller_exceptions: bool = False,
+        timeout: int = 5,
+        **kwargs
+    ) -> None:
         """
         Пользовательский клиент-класс API - входная точка управления роботом.
 
         Args:
             ip (str): IPv4 робота (без порта).
+            ignore_controller_exceptions (bool): Флаг, позволяющий игнорировать
+                ошибки обработчика состояний контроллера. При активации флага
+                пользователям необходимо самостоятельно отслеживать состояние
+                безопасности.
             timeout (int): Таймаут на подключение к роботу (сек).
             Keyword Args:
                 enable_logger (bool): Включить/выключить логирование
@@ -77,6 +87,7 @@ class RobotApi:
         self._is_sockets_active = True
         self._is_pool_active = True
         self._ip = ip
+        self._ignore_controller_exceptions = ignore_controller_exceptions
         self._timeout = timeout
         self._thread_pool = ThreadPool(2)
         self._controller: Controller | None = None
@@ -236,7 +247,11 @@ class RobotApi:
             StateHandler: Объект класса обработчика состояний.
         """
 
-        state_handler = StateHandler(self._rtd_receiver, self._logger)
+        state_handler = StateHandler(
+            self._rtd_receiver,
+            self._logger,
+            self._ignore_controller_exceptions
+        )
         self._thread_pool.apply_async(
             state_handler.start,
             error_callback=self._shutdown_api_sockets

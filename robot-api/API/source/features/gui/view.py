@@ -83,8 +83,7 @@ class _WindowUI:
 
     free_drive_switch: Checkbutton
 
-    move_entry_group: list[Entry]
-    offset_entry_group: list[Entry]
+    entry: Entry
 
     speed_scale: Scale
 
@@ -97,8 +96,8 @@ class _WindowUI:
         main_window.resizable(False, False)
         main_window.configure(bg='#e9e9e9')
         self.spacer_image = PhotoImage()
-        self.move_entry_group: list[CoordinateEntryGroup] = []
-        self.offset_entry_group: list[CoordinateEntryGroup] = []
+        self.move_entry_group: CoordinateEntryGroup = None
+        self.offset_entry_group: CoordinateEntryGroup = None
         self.rtd_groups: list[RTDGroup] = []
         self.coordinate_system = coordinate_system
 
@@ -152,16 +151,6 @@ class _WindowUI:
             row=2, rowspan=3, column=5, columnspan=3, sticky='n'
         )
 
-        spacer = Label(
-            self.main_frame,
-            image=self.spacer_image,
-            compound=CENTER,
-            width=40,
-            height=144,
-            bg='#fbfbfb'
-        )
-        spacer.grid(row=2, rowspan=4, column=8, sticky='n')
-
         label = Label(
             self.main_frame, bg='#fbfbfb', text='Вращение', fg='#3c3f41'
         )
@@ -170,7 +159,7 @@ class _WindowUI:
             self.main_frame, bg='#e9e9e9', borderwidth=0, padx=2, pady=2
         )
         self.rotation_frame.grid(
-            row=2, rowspan=3, column=9, columnspan=3, sticky='n'
+            row=2, rowspan=3, column=9, columnspan=1, sticky='n'
         )
 
         label = Label(
@@ -229,7 +218,7 @@ class _WindowUI:
 
         self.rtd_frame = Frame(self.main_frame, bg='#fbfbfb', borderwidth=0)
         self.rtd_frame.grid(
-            row=9, rowspan=3, column=5, columnspan=7, sticky='s'
+            row=9, rowspan=4, column=5, columnspan=8, sticky='s'
         )
 
         spacer = Label(
@@ -249,19 +238,6 @@ class _WindowUI:
             row=2, rowspan=6, column=13, columnspan=2, sticky='n'
         )
 
-        ttk.Separator(
-            self.main_frame
-        ).grid(row=13, column=1, columnspan=16, ipadx=400, pady=(20, 14))
-        label = Label(
-            self.main_frame, bg='#fbfbfb', fg='#3c3f41',
-            text=(
-                    'Для блокировки клавиш в состоянии нажатия используйте '
-                    'необходимую комбинацию + "Backspace ⬅". Для \n'
-                    'разблокировки нажмите любую клавишу.'
-            )
-        )
-        label.grid(row=14, column=1, columnspan=16, sticky='n')
-
         self.set_joint_buttons()
         self.set_movement_joystick()
         self.set_rotation_joystick()
@@ -280,7 +256,7 @@ class _WindowUI:
             self.motor_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='➖\n( ⌴1 )'
+            text='➖'
         )
         self.j0_min_btn.grid(row=1, column=1, padx=2, pady=2)
         label = Label(
@@ -300,7 +276,7 @@ class _WindowUI:
             self.motor_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='➕\n( 1 )'
+            text='➕'
         )
         self.j0_max_btn.grid(row=1, column=3, padx=2, pady=2)
         self.j1_min_btn = _CustomButton(
@@ -309,7 +285,7 @@ class _WindowUI:
             fg='#4e7ada',
             width=35,
             height=35,
-            text='➖\n( ⌴2 )'
+            text='➖'
         )
         self.j1_min_btn.grid(row=2, column=1, padx=2, pady=2)
         label = Label(
@@ -331,14 +307,14 @@ class _WindowUI:
             fg='#db5c42',
             width=35,
             height=35,
-            text='➕\n( 2 )'
+            text='➕'
         )
         self.j1_max_btn.grid(row=2, column=3, padx=2, pady=2)
         self.j2_min_btn = _CustomButton(
             self.motor_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='➖\n( ⌴3 )'
+            text='➖'
         )
         self.j2_min_btn.grid(row=3, column=1, padx=2, pady=2)
         label = Label(
@@ -358,14 +334,14 @@ class _WindowUI:
             self.motor_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='➕\n( 3 )'
+            text='➕'
         )
         self.j2_max_btn.grid(row=3, column=3, padx=2, pady=2)
         self.j3_min_btn = _CustomButton(
             self.motor_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='➖\n( ⌴4 )'
+            text='➖\n'
         )
         self.j3_min_btn.grid(row=4, column=1, padx=2, pady=2)
         label = Label(
@@ -385,14 +361,14 @@ class _WindowUI:
             self.motor_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='➕\n( 4 )'
+            text='➕'
         )
         self.j3_max_btn.grid(row=4, column=3, padx=2, pady=2)
         self.j4_min_btn = _CustomButton(
             self.motor_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='➖\n( ⌴5 )'
+            text='➖'
         )
         self.j4_min_btn.grid(row=5, column=1, padx=2, pady=2)
         label = Label(
@@ -412,14 +388,14 @@ class _WindowUI:
             self.motor_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='➕\n( 5 )'
+            text='➕'
         )
         self.j4_max_btn.grid(row=5, column=3, padx=2, pady=2)
         self.j5_min_btn = _CustomButton(
             self.motor_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='➖\n( ⌴6 )'
+            text='➖'
         )
         self.j5_min_btn.grid(row=6, column=1, padx=2, pady=2)
         label = Label(
@@ -439,7 +415,7 @@ class _WindowUI:
             self.motor_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='➕\n( 6 )'
+            text='➕'
         )
         self.j5_max_btn.grid(row=6, column=3, padx=2, pady=2)
 
@@ -449,42 +425,42 @@ class _WindowUI:
             self.movement_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='Z ➕\n( e )'
+            text='Z ➕'
         )
         self.z_max_btn.grid(row=1, column=3, padx=2, pady=2)
         self.z_min_btn = _CustomButton(
             self.movement_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='Z ➖\n( q )'
+            text='Z ➖'
         )
         self.z_min_btn.grid(row=1, column=1, padx=2, pady=2)
         self.y_max_btn = _CustomButton(
             self.movement_frame,
             repeat_sig=True,
             fg='#72b043',
-            text='Y ➕\n( d )'
+            text='Y ➕'
         )
         self.y_max_btn.grid(row=2, column=3, padx=2, pady=2)
         self.y_min_btn = _CustomButton(
             self.movement_frame,
             repeat_sig=True,
             fg='#72b043',
-            text='Y ➖\n( a )'
+            text='Y ➖'
         )
         self.y_min_btn.grid(row=2, column=1, padx=2, pady=2)
         self.x_max_btn = _CustomButton(
             self.movement_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='X ➕\n( w )'
+            text='X ➕'
         )
         self.x_max_btn.grid(row=1, column=2, padx=2, pady=2)
         self.x_min_btn = _CustomButton(
             self.movement_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='X ➖\n( s )'
+            text='X ➖'
         )
         self.x_min_btn.grid(row=3, column=2, padx=2, pady=2)
         spacer = Label(
@@ -521,42 +497,42 @@ class _WindowUI:
             self.rotation_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='RZ ➕\n( ⌴e )'
+            text='RZ ➕'
         )
         self.rz_max_btn.grid(row=1, column=3, padx=2, pady=2)
         self.rz_min_btn = _CustomButton(
             self.rotation_frame,
             repeat_sig=True,
             fg='#4e7ada',
-            text='RZ ➖\n( ⌴q )'
+            text='RZ ➖'
         )
         self.rz_min_btn.grid(row=1, column=1, padx=2, pady=2)
         self.ry_max_btn = _CustomButton(
             self.rotation_frame,
             repeat_sig=True,
             fg='#72b043',
-            text='RY ➕\n( ⌴d )'
+            text='RY ➕'
         )
         self.ry_max_btn.grid(row=2, column=3, padx=2, pady=2)
         self.ry_min_btn = _CustomButton(
             self.rotation_frame,
             repeat_sig=True,
             fg='#72b043',
-            text='RY ➖\n( ⌴a )'
+            text='RY ➖'
         )
         self.ry_min_btn.grid(row=2, column=1, padx=2, pady=2)
         self.rx_max_btn = _CustomButton(
             self.rotation_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='RX ➕\n( ⌴w )'
+            text='RX ➕'
         )
         self.rx_max_btn.grid(row=1, column=2, padx=2, pady=2)
         self.rx_min_btn = _CustomButton(
             self.rotation_frame,
             repeat_sig=True,
             fg='#db5c42',
-            text='RX ➖\n( ⌴s )'
+            text='RX ➖'
         )
         self.rx_min_btn.grid(row=3, column=2, padx=2, pady=2)
         spacer = Label(
@@ -594,7 +570,7 @@ class _WindowUI:
             fg='#4e7ada',
             height=320,
             width=92,
-            text='С\nВ\nО\nБ\nО\nД\nН\nЫ\nЙ\n\nП\nР\nИ\nВ\nО\nД\n\n( f )'
+            text='С\nВ\nО\nБ\nО\nД\nН\nЫ\nЙ\n\nП\nР\nИ\nВ\nО\nД'
         )
         self.free_drive_btn.grid(row=1, column=1, padx=2, pady=2)
         self.enabled = IntVar()
@@ -700,7 +676,7 @@ class _WindowUI:
         self.shift_btn.grid(row=2, column=7, padx=2, pady=2)
         offset_entry_group.entries = tuple(entries)
         offset_entry_group.shift_btn = self.shift_btn
-        self.offset_entry_group.append(offset_entry_group)
+        self.offset_entry_group = offset_entry_group
 
     def set_move_entry(self):
         label = Label(
@@ -749,28 +725,32 @@ class _WindowUI:
         self.move_btn.grid(row=2, column=7, padx=2, pady=2)
         move_entry_group.entries = tuple(entries)
         move_entry_group.move_btn = self.move_btn
-        self.move_entry_group.append(move_entry_group)
+        self.move_entry_group = move_entry_group
 
     def set_rtd(self):
-        for i in range(1, 5, 2):
+        for i in range(0, 4, 2):
             rtd_group = RTDGroup(
                 name='Углы поворотов моторов'
-                if i == 1 else 'Положение ЦТИ ( м )',
+                if i == 0 else 'Положение ЦТИ ( м )',
                 type_=MotionTypes.JOINT
-                if i == 1 else MotionTypes.LINEAR
+                if i == 0 else MotionTypes.LINEAR
             )
             labels = []
             label = Label(
                 self.rtd_frame, bg='#fbfbfb', text=rtd_group.name, fg='#3c3f41'
             )
             label.grid(
-                row=i, column=1, sticky='w', pady=(15 if i == 3 else 0, 0)
+                row=i,
+                column=1,
+                sticky='w',
+                padx=(0 if i == 2 else 20),
+                pady=(15 if i == 2 else 0, 0)
             )
             frame = Frame(
                 self.rtd_frame, bg='#e9e9e9', borderwidth=0, padx=2, pady=2
             )
-            frame.grid(row=i+1, column=1, columnspan=7)
-            for j in range(1, JOINTS_COUNT + 1):
+            frame.grid(row=i+1, column=1, columnspan=7 if i == 2 else 6)
+            for j in range(JOINTS_COUNT):
                 label = Label(
                     frame,
                     text='-000.000',
@@ -788,13 +768,27 @@ class _WindowUI:
                 labels.append(label)
             copy_btn = _CustomButton(
                 frame,
+                font=font.Font(size=9),
                 repeat_sig=False,
-                width=70,
+                width=60,
                 height=20,
                 fg='#4e7ada',
                 text='Копировать',
                 anchor=CENTER
             )
+            if i == 2:
+                paste_btn = _CustomButton(
+                    frame,
+                    font=font.Font(size=9),
+                    repeat_sig=False,
+                    width=60,
+                    height=20,
+                    fg='#4e7ada',
+                    text=' Вставить',
+                    anchor=CENTER
+                )
+                paste_btn.grid(row=1, column=8, padx=2, pady=2)
+                rtd_group.paste_btn = paste_btn
             copy_btn.grid(row=1, column=7, padx=2, pady=2)
             rtd_group.labels = tuple(labels)
             rtd_group.copy_btn = copy_btn

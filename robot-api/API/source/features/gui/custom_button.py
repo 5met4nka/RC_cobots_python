@@ -56,7 +56,7 @@ class _CustomButton(Button):
             if self.func:
                 self.func(*self.func_args)
             if self.repeat_sig:
-                self.after(10, self._generate_signal)
+                self.after(1, self._generate_signal)
 
     def connect(self, func: Callable, *args) -> _CustomButton:
         self.func = func

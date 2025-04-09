@@ -14,18 +14,22 @@ from API.source.models.classes.enum_classes.controller_commands import (
     Setters as Set
 )
 from API.source.models.constants import (
-    AVAILABLE_DIG_IN_INDEX_COUNT, AVAILABLE_DIG_OUT_INDEX_COUNT, BITS_IN_BYTE,
-    CHECK_FREQUENCY_SEC, CTRLR_IO_GET_FUNCTION_UNPACK_VALUES_TYPE,
-    CTRLR_IO_SET_FUNCTION_PACK_FORMAT, CTRLR_IO_SET_VALUE_PACK_FORMAT,
-    DIGITAL_IO_INDEX_COUNT, NO_FUNC_ANSWER_VALUE
+    AVAILABLE_DIG_IN_INDEX_COUNT, AVAILABLE_DIG_OUT_INDEX_COUNT,
+    BITS_IN_BYTE, CHECK_FREQUENCY_SEC,
+    CTRLR_IO_GET_FUNCTION_UNPACK_VALUES_TYPE,
+    CTRLR_IO_SET_FUNCTION_PACK_FORMAT,
+    CTRLR_IO_GET_SAFETY_FUNCTION_UNPACK_FORMAT, CTRLR_IO_SET_VALUE_PACK_FORMAT,
+    DIGITAL_IO_INDEX_COUNT, DIG_IN_INDEX_RANGE, DIG_SAFETY_IN_INDEX_RANGE,
+    NO_FUNC_ANSWER_VALUE
 )
-from API.source.models.type_aliases import DigitalIndex
+from API.source.models.type_aliases import DigitalIndex, DigitalSafetyIndex
 from API.source.core.exceptions.data_validation_error.argument_error import (
     validation
 )
 from API.source.features.tools import dataclass_to_tuple
 from API.source.models.classes.enum_classes.io_functions import (
-    InputFunction, OutputFunction)
+    InputFunction, OutputFunction, SafetyInputFunctions
+)
 from API.source.models.type_aliases import InputFunction_, OutputFunction_
 
 if TYPE_CHECKING:
@@ -52,6 +56,20 @@ class DigitalIO:
         self._rtd_receiver = rtd_receiver
         self._logger = logger
 
+    def _get_input(self, index: int, inputs_range: int) -> bool:
+        """
+        Получить текущее двоичное значение на 'index' цифровом входе.
+
+        Args:
+            index: Индекс входа.
+        Returns:
+            bool: True — есть сигнал, False — нет сигнала.
+        """
+        validate_index(index, inputs_range)
+        byte_index = int(index // BITS_IN_BYTE)
+        mask = 1 << (index % BITS_IN_BYTE)
+        return self._rtd_receiver.rt_data.dig_in[byte_index] & mask != 0
+
     def get_input(self, index: DigitalIndex) -> bool:
         """
         Получить текущее двоичное значение на 'index' цифровом входе.
@@ -62,10 +80,42 @@ class DigitalIO:
             bool: True — есть сигнал, False — нет сигнала.
         """
 
-        validate_index(index, range(AVAILABLE_DIG_IN_INDEX_COUNT))
-        byte_index = int(index / BITS_IN_BYTE)
-        mask = 1 << (byte_index % BITS_IN_BYTE)
-        return self._rtd_receiver.rt_data.dig_in[byte_index] & mask != 0
+        return self._get_input(
+            index=index,
+            inputs_range=DIG_IN_INDEX_RANGE
+        )
+
+    def get_safety_input(self, index: DigitalSafetyIndex) -> bool:
+        """
+        Получить текущее двоичное значение на 'index' цифровом входе
+        безопасности.
+
+        Args:
+            index: Индекс входа(0-7).
+        Returns:
+            bool: True — есть сигнал, False — нет сигнала.
+        """
+        return self._get_input(
+            index=index+AVAILABLE_DIG_IN_INDEX_COUNT,
+            inputs_range=DIG_SAFETY_IN_INDEX_RANGE
+        )
+
+    def get_safety_input_functions(self) -> tuple[tuple[int, str], ...]:
+        """
+        Получить назначенные функции на входы безопасности.
+
+        Returns:
+            tuple: Все назначенные функции CBOX на входах безопасности
+        """
+        self._controller.send(Get.ctrlr_coms_cbox_get_sfty_input_func)
+        response = self._controller.receive(
+            Get.ctrlr_coms_cbox_get_sfty_input_func,
+            CTRLR_IO_GET_SAFETY_FUNCTION_UNPACK_FORMAT
+        )
+        result = []
+        for index, value in enumerate(response):
+            result.append((index, SafetyInputFunctions(value).name))
+        return tuple(result)
 
     def get_output(self, index: DigitalIndex) -> bool:
         """
@@ -184,7 +234,7 @@ class DigitalIO:
     ) -> tuple[tuple[int, str], ...] | tuple[int, str]:
         """
         Получить установленное действие на 'index' цифровом входе. При вызове
-        без аргумента вернет все активные индексы цифровых входов и
+        без аргумента вернет все индексы цифровых входов и
         установленные на них действия.
 
         Args:
@@ -213,10 +263,9 @@ class DigitalIO:
             for index, value in enumerate(
                 response[:AVAILABLE_DIG_IN_INDEX_COUNT]
             ):
-                if value != NO_FUNC_ANSWER_VALUE:
-                    result.append(
-                        (index, InputFunction(value).name)
-                    )
+                result.append(
+                    (index, InputFunction(value).name)
+                )
             return result
         validate_index(index, range(AVAILABLE_DIG_IN_INDEX_COUNT))
         return index, InputFunction(response[index]).name
@@ -299,6 +348,6 @@ class DigitalIO:
                     result.append(
                         (index, OutputFunction(value).name)
                     )
-            return result
+            return tuple(result)
         validate_index(index, range(AVAILABLE_DIG_OUT_INDEX_COUNT))
         return index, OutputFunction(response[index]).name

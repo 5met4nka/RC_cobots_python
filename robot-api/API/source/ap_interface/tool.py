@@ -85,7 +85,7 @@ class Tool:
                 в формате (X, Y, Z, Rx, Ry, Rz), где (X, Y, Z) — м,
                 (Rx, Ry,Rz) — 'units'.
         """
-        
+
         if units is None:
             units = MOTION_SETUP.units
         validate_literal('angle', units)

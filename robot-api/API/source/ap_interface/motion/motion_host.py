@@ -107,7 +107,7 @@ class Motion:
         ):
             if self._rtd_receiver.rt_data.wp_cntr == self._waypoint_counter:
                 return True
-        self._waypoint_counter -= 1
+        self._waypoint_counter = None
         raise AddWaypointError
 
     @staticmethod
@@ -198,6 +198,23 @@ class Motion:
             coordinate_system
         )
         return True
+
+    def check_waypoint_completion(self, waypoint_count: int = 0) -> bool:
+        """
+        Проверить состояние исполнения текущих заданных целевых точек
+        (без ожидания).
+
+        Args:
+            waypoint_count: Целевое количество точек в очереди
+        Returns:
+            True: Если точки исполнены (целевых точек в буфере меньше, чем
+                `waypoint_count`).
+            False: Если точки не исполнены (точек в буфере больше, чем
+                `waypoint_count`).
+        """
+
+        validate_value(waypoint_count, WP_COUNT_LIMITS)
+        return (self._rtd_receiver.rt_data.buff_fill <= waypoint_count)
 
     def wait_waypoint_completion(
         self, waypoint_count: int = 0, await_sec: int = -1

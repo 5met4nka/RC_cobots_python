@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple
-from API.source.models.constants import (CTRLR_MAX_DIG_OUT_BYTES,
-                                         CTRLR_MAX_AN_OUT)
+
+from API.source.models.constants import (
+    CTRLR_MAX_DIG_OUT_BYTES, CTRLR_MAX_AN_OUT
+)
 from API.source.models.type_aliases import AngleUnits, PositionOrientation
 
 
@@ -10,8 +11,8 @@ class MoveCommandTemplate:
     t: int = 0
     des_q: PositionOrientation = (0, ) * 6
     des_x: PositionOrientation = (0, ) * 6
-    force: Tuple[float, ...] = (0, ) * 6
-    force_en: Tuple[float, ...] = (0, ) * 6
+    force: tuple[float, ...] = (0, ) * 6
+    force_en: tuple[float, ...] = (0, ) * 6
     in_tcp: float = 0
     v_max_t: float = 0
     v_max_r: float = 0
@@ -26,50 +27,56 @@ class MoveCommandTemplate:
 @dataclass
 class JogCommandParametersTemplate:
     in_tcp: int = 0
-    force_en: List[float] = field(default_factory=lambda: [0] * 6)
-    force: List[float] = field(default_factory=lambda: [0] * 6)
-    speed_max: List[float] = field(
+    force_en: list[float] = field(default_factory=lambda: [0] * 6)
+    force: list[float] = field(default_factory=lambda: [0] * 6)
+    speed_max: list[float] = field(
         default_factory=lambda: [0.2] * 3 + [0.5] * 3
     )
-    accel: List[float] = field(default_factory=lambda: [0.1] * 3 + [0.25] * 3)
-    decel: List[float] = field(default_factory=lambda: [2.0] * 3 + [2.5] * 3)
+    accel: list[float] = field(default_factory=lambda: [0.1] * 3 + [0.25] * 3)
+    decel: list[float] = field(default_factory=lambda: [2.0] * 3 + [2.5] * 3)
 
 
 @dataclass
 class JogCommandTemplate:
     mode: int = 0
-    force_en: List[float] = field(default_factory=lambda: [0] * 6)
-    force_max: List[float] = field(default_factory=lambda: [0] * 6)
-    force_const: List[float] = field(default_factory=lambda: [0] * 6)
-    stiff: List[float] = field(default_factory=lambda: [0] * 6)
-    var: List[float] = field(default_factory=lambda: [0] * 6)
+    force_en: list[float] = field(default_factory=lambda: [0] * 6)
+    force_max: list[float] = field(default_factory=lambda: [0] * 6)
+    force_const: list[float] = field(default_factory=lambda: [0] * 6)
+    stiff: list[float] = field(default_factory=lambda: [0] * 6)
+    var: list[float] = field(default_factory=lambda: [0] * 6)
 
 
 @dataclass
 class JointJogCommandTemplate:
     mode: int = 0
-    joints_rotation_directions: List[float] = field(
+    joints_rotation_directions: list[float] = field(
         default_factory=lambda: [0] * 6
     )
 
 
 @dataclass
 class SetOutputTemplate:
-    dig_out_mask: List[int] = field(
+    dig_out_mask: list[int] = field(
         default_factory=lambda: [0] * CTRLR_MAX_DIG_OUT_BYTES
     )
-    dig_out: List[int] = field(
+    dig_out: list[int] = field(
         default_factory=lambda: [0] * CTRLR_MAX_DIG_OUT_BYTES
     )
-    an_out_mask: List[int] = field(
+    an_out_mask: list[int] = field(
         default_factory=lambda: [0] * CTRLR_MAX_AN_OUT
     )
-    an_out_curr_mode: List[int] = field(
+    an_out_curr_mode: list[int] = field(
         default_factory=lambda: [0] * CTRLR_MAX_AN_OUT
     )
-    an_out_value: List[float] = field(
+    an_out_value: list[float] = field(
         default_factory=lambda: [0] * CTRLR_MAX_AN_OUT
     )
+
+
+@dataclass
+class InverseKinematicOptimalTemplate:
+    target: list[float] = field(default_factory=lambda: [0] * 6)
+    base_q: list[float] = field(default_factory=lambda: [0] * 6)
 
 
 @dataclass

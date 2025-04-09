@@ -67,9 +67,3 @@ class RTDReceiver(SocketWrapper):
             self.create_connection() and self._receive_rtd()
             and self._validate_rtd()
         )
-
-
-if __name__ == '__main__':
-    receiver = RTDReceiver('192.168.0.56', 5)
-    receiver.initialise()
-    receiver.receiving_loop()
