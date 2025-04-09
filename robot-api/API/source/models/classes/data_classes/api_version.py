@@ -13,7 +13,7 @@ class Version:
     """
 
     proto_version: str | int = 0x02000400
-    core_version: str = '1.2.604'
+    core_version: str = '1.2.607'
     api_version: int = 3
 
     def get_full_version(self):

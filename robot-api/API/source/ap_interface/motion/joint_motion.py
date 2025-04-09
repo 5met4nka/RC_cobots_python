@@ -92,7 +92,6 @@ class JointMotion:
             True: В случае успешного добавления точки.
             False: В случае таймаута (если await_sec >= 0).
         """
-
         if speed is None:
             speed = MOTION_SETUP.joint_speed
         if accel is None:
@@ -188,8 +187,8 @@ class JointMotion:
                 'deg' — градусы.
                 'rad' — радианы.
         Returns:
-            list: Последняя сохраненная позиция робота — 6 углов поворотов
-                моторов, от основания до фланца робота ('units').
+            PositionOrientation: Последняя сохраненная позиция робота — 6 углов
+                поворотов моторов, от основания до фланца робота ('units').
         """
         if units is None:
             units = MOTION_SETUP.units
@@ -240,7 +239,7 @@ class JointMotion:
 
     def set_jog_param_in_tcp(self, in_tcp: JogParamInTCP) -> bool:
         """
-        Метод для переключения движения типа Joint междку системой
+        Метод для переключения движения типа Joint между системой
         координат ЦТИ и Основания.
 
         Args:

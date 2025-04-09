@@ -1,7 +1,8 @@
 from __future__ import annotations
 from struct import pack
-from typing import TYPE_CHECKING
+from typing import cast, TYPE_CHECKING
 
+import API.source.features.mathematics.unit_convert as unit_c
 from API.source.ap_interface.motion.joint_motion import JointMotion
 from API.source.ap_interface.motion.kinematics_solution import Kinematics
 from API.source.ap_interface.motion.linear_motion import LinearMotion
@@ -19,16 +20,18 @@ from API.source.models.classes.data_classes.command_templates import (
     MOTION_SETUP, MoveCommandTemplate
 )
 from API.source.models.classes.enum_classes.controller_commands import (
-    AddWayPointCommand as Awp
+    AddWayPointCommand as Awp, Getters as Get, Setters as Set
 )
 from API.source.models.classes.enum_classes.state_classes import (
     OutComingMotionMode as Omm
 )
 from API.source.models.constants import (
-    CTRLR_ADD_WP_CMD_PACK_FORMAT, OMM_ENABLE_DISABLE_PACK_FORMAT,
-    WP_ADD_TIMEOUT, CHECK_FREQUENCY_SEC, WP_COUNT_LIMITS, WP_COUNTER_MAX_VALUE
+    CTRLR_ADD_WP_CMD_PACK_FORMAT, CTRLR_GET_SET_HOME_POSE_PACK_UNPACK_FORMAT,
+    MOVE_TO_HOME_POSE_ACCEL, MOVE_TO_HOME_POSE_SPEED,
+    OMM_ENABLE_DISABLE_PACK_FORMAT, WP_ADD_TIMEOUT, CHECK_FREQUENCY_SEC,
+    POSITION_ORIENTATION_LENGTH, WP_COUNT_LIMITS, WP_COUNTER_MAX_VALUE
 )
-from API.source.models.type_aliases import AngleUnits
+from API.source.models.type_aliases import AngleUnits, PositionOrientation
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -40,6 +43,8 @@ if TYPE_CHECKING:
     from API.source.core.network.rtd_receiver_socket import RTDReceiver
 
 
+validate_length = validation.validate_length
+validate_literal = validation.validate_literal
 validate_value = validation.validate_value
 
 
@@ -150,6 +155,50 @@ class Motion:
         if blend:
             MOTION_SETUP.blend = blend
 
+    def check_waypoint_completion(self, waypoint_count: int = 0) -> bool:
+        """
+        Проверить состояние исполнения текущих заданных целевых точек
+        (без ожидания).
+
+        Args:
+            waypoint_count: Целевое количество точек в очереди
+        Returns:
+            True: Если точки исполнены (целевых точек в буфере меньше, чем
+                `waypoint_count`).
+            False: Если точки не исполнены (точек в буфере больше, чем
+                `waypoint_count`).
+        """
+
+        validate_value(waypoint_count, WP_COUNT_LIMITS)
+        return (self._rtd_receiver.rt_data.buff_fill <= waypoint_count)
+
+    def get_home_pose(self, units: AngleUnits = None) -> PositionOrientation:
+        """
+        Получить текущую домашнюю позицию робота.
+
+        Args:
+            units: Единицы измерения. По-умолчанию градусы.
+                'deg' — градусы.
+                'rad' — радианы.
+        Returns:
+            PositionOrientation: Последняя сохраненная позиция робота — 6 углов
+                поворотов моторов, от основания до фланца робота ('units').
+        """
+        if units is None:
+            units = MOTION_SETUP.units
+        validate_literal('angle', units)
+        self._controller.send(Get.ctrlr_coms_get_home_pose)
+        response = self._controller.receive(
+            Get.ctrlr_coms_get_home_pose,
+            CTRLR_GET_SET_HOME_POSE_PACK_UNPACK_FORMAT
+        )
+        if units == 'deg':
+            return cast(
+                PositionOrientation,
+                unit_c.radians_to_degrees(*response)
+            )
+        return cast(PositionOrientation, response)
+
     def free_drive(self, enable: bool = True) -> bool:
         """
         Режим 'FREE DRIVE'. Позволяет управлять роботом вручную.
@@ -165,6 +214,55 @@ class Motion:
         return self._controller.send(
             Omm.zero_gravity,
             pack(OMM_ENABLE_DISABLE_PACK_FORMAT, bool(enable))
+        )
+
+    def move_to_home_pose(self):
+        """
+        Передвинуть робота в домашнюю позицию. Предварительно происходит
+        остановка робота и сброс точек в буфере.
+
+        Returns:
+            True: В случае начала перемещения в домашнюю позицию.
+        """
+        return (
+            self.mode.set('hold')
+            and
+            self.joint.add_new_waypoint(
+                angle_pose=self.get_home_pose(units='rad'),
+                speed=MOVE_TO_HOME_POSE_SPEED,
+                accel=MOVE_TO_HOME_POSE_ACCEL,
+                units='rad'
+            )
+            and
+            self.mode.set('move')
+        )
+
+    def set_home_pose(
+        self,
+        angle_pose: PositionOrientation = None,
+        units: AngleUnits = None
+    ) -> bool:
+        """
+        Установить новую домашнюю позицию робота.
+
+        Args:
+            angle_pose: 6 углов поворота моторов, от основания до фланца робота
+                ('units').
+            units: Единицы измерения. По-умолчанию градусы.
+                'deg' — градусы.
+                'rad' — радианы.
+        Returns:
+            True: В случае успешно установленной домашней позиции.
+        """
+        if units is None:
+            units = MOTION_SETUP.units
+        validate_literal('angle', units)
+        validate_length(angle_pose, POSITION_ORIENTATION_LENGTH)
+        if units == 'deg':
+            angle_pose = unit_c.degrees_to_radians(*angle_pose)
+        return self._controller.send(
+            Set.ctrlr_coms_set_home_pose,
+            pack(CTRLR_GET_SET_HOME_POSE_PACK_UNPACK_FORMAT, *angle_pose)
         )
 
     def simple_joystick(
@@ -198,23 +296,6 @@ class Motion:
             coordinate_system
         )
         return True
-
-    def check_waypoint_completion(self, waypoint_count: int = 0) -> bool:
-        """
-        Проверить состояние исполнения текущих заданных целевых точек
-        (без ожидания).
-
-        Args:
-            waypoint_count: Целевое количество точек в очереди
-        Returns:
-            True: Если точки исполнены (целевых точек в буфере меньше, чем
-                `waypoint_count`).
-            False: Если точки не исполнены (точек в буфере больше, чем
-                `waypoint_count`).
-        """
-
-        validate_value(waypoint_count, WP_COUNT_LIMITS)
-        return (self._rtd_receiver.rt_data.buff_fill <= waypoint_count)
 
     def wait_waypoint_completion(
         self, waypoint_count: int = 0, await_sec: int = -1

@@ -39,6 +39,7 @@ class Getters(IntEnum):
     ctrlr_coms_get_tool_capsule: int = 1128
     ctrlr_coms_get_link_capsule_count: int = 1129
     ctrlr_coms_get_link_capsule: int = 1130
+    ctrlr_coms_get_home_pose: int = 1150
     ctrlr_coms_get_robot_view_info: int = 4000
     ctrlr_coms_get_sw_version: int = 3000
     ctrlr_coms_get_proto_version: int = 3001
@@ -55,6 +56,7 @@ class Getters(IntEnum):
 class Setters(IntEnum):
     ctrlr_coms_set_force_param: int = 1024
     ctrlr_coms_set_jog_param: int = 1023
+    ctrlr_coms_set_home_pose: int = 1050
     ctrlr_coms_set_move_scale: int = 1015
     ctrlr_coms_set_outputs: int = 14
     ctrlr_coms_set_payload: int = 1021

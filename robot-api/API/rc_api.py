@@ -51,6 +51,7 @@ class RobotApi:
         self,
         ip: str,
         ignore_controller_exceptions: bool = False,
+        read_only: bool = False,
         timeout: int = 5,
         **kwargs
     ) -> None:
@@ -63,13 +64,15 @@ class RobotApi:
                 ошибки обработчика состояний контроллера. При активации флага
                 пользователям необходимо самостоятельно отслеживать состояние
                 безопасности.
+            read_only (bool): Флаг работы API в режиме read_only, подключение
+                при этом происходит только к порту RTD.
             timeout (int): Таймаут на подключение к роботу (сек).
             Keyword Args:
                 enable_logger (bool): Включить/выключить логирование
                     (в состоянии False последующие аргументы игнорируются).
                 enable_logfile (bool): Включить/выключить логирование в файл.
-                logger (logging.Logger): Пользовательский логер (переопределяет
-                    предустановленные настройки логера).
+                logger (logging.Logger): Пользовательский логгер
+                    (переопределяет предустановленные настройки логгера).
                 logfile_path (pathlib.Path): Путь для размещения файлов
                     логирования (по умолчанию создает папку рядом с исполняемым
                     файлом).
@@ -80,7 +83,7 @@ class RobotApi:
                 show_std_traceback (bool): Включить/выключить полное
                     отображение ошибок в консоли.
         """
-
+        self._read_only = read_only
         self._logger = set_logger(**kwargs)
         sys.excepthook = self._exit_program
         atexit.register(self._exit_program)
@@ -94,19 +97,20 @@ class RobotApi:
         self._rtd_receiver: RTDReceiver | None = None
         self._state_handler: StateHandler | None = None
         self._start_flow(enable_state_handler=True)
-        self.motion = Motion(
-            self._controller, self._rtd_receiver, self._logger
-        )
-        self.tool = Tool(self._controller)
-        self.payload = PayLoad(self._controller)
         self.safety_status = SafetyStatus(self._rtd_receiver, self._logger)
-        self.controller_state = ControllerState(
-            self._controller,
-            self._rtd_receiver,
-            self.motion.joint,
-            self._logger
-        )
-        self.io = IO(self._controller, self._rtd_receiver, self._logger)
+        if not self._read_only:
+            self.motion = Motion(
+                self._controller, self._rtd_receiver, self._logger
+            )
+            self.tool = Tool(self._controller)
+            self.payload = PayLoad(self._controller)
+            self.controller_state = ControllerState(
+                self._controller,
+                self._rtd_receiver,
+                self.motion.joint,
+                self._logger
+            )
+            self.io = IO(self._controller, self._rtd_receiver, self._logger)
 
     def _exit_program(self, exc_type=None, exc_value=None, exc_traceback=None):
         """
@@ -184,14 +188,15 @@ class RobotApi:
     def _start_flow(self, enable_state_handler: bool):
         self._logger.info(f'Client version: [{RobotInfo.client_version}]')
         self._logger.info(f'Connecting to Robot at [{self._ip}]')
-        self._controller = self._initialise_controller()
         self._rtd_receiver = self._initialise_rtd_receiver()
-        if self._rtd_receiver and self._controller and self._ping_loop(5):
-            self._validate_api_version()
-            self._state_handler = (
-                self._initialise_state_handler()
-                if enable_state_handler else None
-            )
+        if not self._read_only:
+            self._controller = self._initialise_controller()
+            if self._rtd_receiver and self._controller and self._ping_loop(5):
+                self._validate_api_version()
+                self._state_handler = (
+                    self._initialise_state_handler()
+                    if enable_state_handler else None
+                )
 
     def _validate_api_version(self):
         if (server := self._get_server_version()) != RobotInfo.client_version:
@@ -200,7 +205,7 @@ class RobotApi:
             )
         if not self._unlock_connection():
             raise ControllerUnlockError('Most probably server is busy')
-        self._logger.info('Successfully authorised in Robot')
+        self._logger.info('Successfully authorized in Robot')
 
     def _initialise_controller(self) -> Controller:
         """

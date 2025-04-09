@@ -163,6 +163,26 @@ class DigitalIO:
             )
         )
 
+    def wait_any_input(self, await_sec: int = -1) -> bool:
+        """
+        Ожидать изменение двоичного сигнала на любом цифровом входе.
+
+        Args:
+            await_sec: Лимит времени ожидания.
+                -1 — безлимитное ожидание.
+                0 — одна итерация цикла ожидания (эквивалентно разовому
+                    условию).
+        Returns:
+            True: В случае изменения значения на одном или сразу на нескольких
+                цифровых входах.
+            False: В случае таймаута (если await_sec >= 0).
+        """
+        current_inputs = self._rtd_receiver.rt_data.dig_in
+        for _ in sleep(await_sec=await_sec, frequency=CHECK_FREQUENCY_SEC):
+            if current_inputs != self._rtd_receiver.rt_data.dig_in:
+                return True
+        return False
+
     def wait_input(
         self, index: DigitalIndex, value: bool, await_sec: int = -1
     ) -> bool:
@@ -184,15 +204,9 @@ class DigitalIO:
         """
 
         validate_index(index, range(AVAILABLE_DIG_IN_INDEX_COUNT))
-        self._logger.info(f'Waiting digital signal on {index} input...')
         for _ in sleep(await_sec=await_sec, frequency=CHECK_FREQUENCY_SEC):
             if self.get_input(index) == bool(value):
-                self._logger.info(
-                    f'Digital signal on {index} input is '
-                    f'{self.get_input(index)}'
-                )
                 return True
-        self._logger.info(f'Digital signal on {index} input timeout')
         return False
 
     def set_input_function(
@@ -208,7 +222,7 @@ class DigitalIO:
                 'move' - переход в состояние MOVE (начало движения по точкам)
                 'hold' - переход в состояние HOLD (остановка робота и очистка
                     буфера точек).
-                'pause' - переход в стостояние PAUSE (остановка робота без
+                'pause' - переход в состояние PAUSE (остановка робота без
                     очистки буфера точек).
                 'zero_gravity' - переход в состояние ZERO_GRAVITY (свободное
                     движение).
@@ -245,7 +259,7 @@ class DigitalIO:
                 'move' - переход в состояние MOVE (начало движения по точкам)
                 'hold' - переход в состояние HOLD (остановка робота и очистка
                     буфера точек).
-                'pause' - переход в стостояние PAUSE (остановка робота без
+                'pause' - переход в состояние PAUSE (остановка робота без
                     очистки буфера точек).
                 'zero_gravity' - переход в состояние ZERO_GRAVITY (свободное
                     движение).
